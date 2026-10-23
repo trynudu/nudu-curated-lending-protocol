@@ -7,18 +7,18 @@ pub const bps_denominator: Int = 10_000
 pub const default_max_single_borrower_bps: Int = 1_000
 
 pub fn senior_share_asset_name() -> AssetName {
-  @"senior"
+  #"73656e696f72"
 }
 
 pub fn junior_share_asset_name() -> AssetName {
-  @"junior"
+  #"6a756e696f72"
 }
 
 pub fn whitelist_asset_name() -> AssetName {
-  @"kyc"
+  #"6b7963"
 }
 
 /// USDCx asset name under its mint policy (configure per network deployment).
 pub fn usdcx_asset_name() -> AssetName {
-  @""
+  #""
 }
