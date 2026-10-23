@@ -1,0 +1,65 @@
+---
+description: Phase-1 lending invariants — vault, credit, waterfall, whitelist, oracle
+globs: "**/*.ak"
+alwaysApply: false
+---
+
+# Lending invariants (phase 1)
+
+## Vault and shares
+
+- **Two tranches:** senior and junior. One mint policy, two asset names (defined in `lib/constants.ak`).
+- Deposits increase vault USDCx and mint tranche shares; withdrawals burn shares and return USDCx per the share formula (integer math; round down user payout).
+- **Senior deposit** redeemer must require a **whitelist token** in an input from the depositor (see Whitelist).
+
+## Whitelist
+
+- KYC = **native token** minted under a **curator-controlled policy** (not a list of addresses stored in vault datum).
+- Deposit (senior): transaction includes whitelist token for that payment credential; vault does not maintain an on-chain address array.
+
+```aiken
+// BAD — unbounded address list in vault datum
+type VaultDatum { allowed: List<Address>, ... }
+
+// GOOD — proof-of-KYC asset in inputs
+must_have_whitelist_token(inputs, depositor, policy_id)
+```
+
+## Credit (one UTxO per loan)
+
+- Datum holds: principal, revenue-share %, repayment cap, schedule fields, vault reference, borrower identity (payment credential or hash), status.
+- **Disburse:** requires **curator signature** and **concentration limit**: new loan principal + existing exposure to same borrower (or startup id) ≤ `max_single_borrower_bps` of vault TVL (parameter in vault/credit config datum, default 10% off-chain docs — store as bps in datum, not hardcode in multiple validators).
+- Funds move from vault to borrower only through the defined disburse redeemer.
+
+## Waterfall (single implementation)
+
+Implement **once** in `lib/waterfall.ak` (pure function). Credit repay redeemer calls it; do not duplicate formulas in the vault validator.
+
+Order on **interest portion** of a repayment (never take fees from returned principal):
+
+1. **Protocol fee** (bps of interest)
+2. **Curator performance fee** (bps of interest)
+3. **Senior tranche** — accrue at configured senior rate; pay senior LPs **pro rata** by senior shares
+4. **Junior tranche** — residual interest
+5. **Principal** — return to vault liquidity (not treated as “interest” for fees)
+
+**Loss / default:** reduce junior tranche NAV first; senior impaired only after junior first-loss buffer is exhausted (explicit accounting fields in vault datum or per-tranche asset tracking).
+
+## Revenue attester
+
+- Config holds **one** attester public key (MVP).
+- Repay redeemer verifies attestation signature over agreed message (loan id, period, amount, nonce/expiry as designed) in addition to borrower funds in the transaction.
+
+## Tests (minimum)
+
+For each redeemer variant:
+
+- One test **succeeds** with valid auth and balanced value
+- One test **fails** (wrong signature, missing whitelist, over concentration, wrong waterfall split)
+
+For `lib/waterfall.ak`:
+
+- Numeric examples: known interest in → exact fee splits and senior/junior allocation out
+- Edge: zero interest, full principal-only payment (no fees on principal)
+
+Run `aiken check` before considering work complete.

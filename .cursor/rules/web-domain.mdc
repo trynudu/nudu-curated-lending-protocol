@@ -1,0 +1,42 @@
+---
+description: Future web app — domain types, chain as truth, phase-1 boundaries
+globs: "**/*.{ts,tsx,js,jsx}"
+alwaysApply: false
+---
+
+# Web domain (future)
+
+No framework is chosen yet. When adding a frontend or indexer client, follow these rules regardless of stack.
+
+## Chain as source of truth
+
+- Balances, share supply, loan status, and **waterfall results** come from **chain + indexer**, not from client-side recomputation that could disagree with Aiken.
+- OK: format amounts, fetch UTxOs/datums, build unsigned txs, show APY **estimates** labeled as off-chain.
+- Not OK: implement payment priority or loss allocation in JS/TS as the authority for what users “should” receive.
+
+## Amounts
+
+- Use **bigint** or string integers for base units end-to-end in logic; convert to decimal **only** for display.
+- Never use `number` for USDCx base units above safe integer range.
+
+```typescript
+// BAD
+const total = parseFloat(display) * 1e6
+
+// GOOD
+const baseUnits = parseUsdcxBaseUnits(displayString) // returns bigint
+```
+
+## Wallets and keys
+
+- Browser wallet only (CIP-30 or successor). No storing seed phrases, curator keys, or attester keys in the web app or localStorage.
+
+## Phase 1 UI scope
+
+- Do not build product flows for **Liqwid / sUSDrf idle liquidity**, **external curator vault creation**, or **governance** until those phases exist on-chain.
+- Whitelist/KYC UX may **reflect** off-chain provider status but on-chain deposit still requires the **whitelist native asset** in the tx.
+
+## API / indexer
+
+- Prefer a small, typed schema for vault id, tranche, loan id, and repayment events aligned with on-chain datums.
+- Version API responses when datum layouts change; never assume mainnet addresses in shared constants without env config.

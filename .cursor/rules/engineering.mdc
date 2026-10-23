@@ -1,0 +1,41 @@
+---
+description: General engineering standards for nudu Growth Protocol
+alwaysApply: true
+---
+
+# Engineering standards
+
+## Money and types
+
+- Store and compare amounts as **unsigned integers** in the asset’s smallest unit (USDCx base units). Never use floats for balances, rates, or waterfall math.
+- Display formatting (decimals, locale) belongs in off-chain / web code only.
+
+```aiken
+// BAD — fractional logic on-chain
+let share = deposit * 0.15
+
+// GOOD — integer ratio with explicit rounding policy
+let shares = deposit * total_shares / total_assets
+```
+
+- **Rounding favors the vault**, not the user, when minting/burning shares or allocating interest.
+
+## Security and secrets
+
+- Never commit private keys, seed phrases, Blockfrost project IDs for production, or KYC provider secrets.
+- Use env vars and `.env.example` (no real values) for off-chain tooling.
+
+## Errors and scope
+
+- Fail closed: invalid auth, missing whitelist token, or broken invariants → transaction must not validate.
+- Prefer explicit `Fail` / `expect` messages in tests; avoid silent `False` without a named reason in lib helpers.
+- Do not expand MVP scope (Liqwid, sUSDrf, external curators) “just for convenience” in the same PR as core vault/credit work.
+
+## Source of truth
+
+- **On-chain state** (vault UTxO, loan UTxO, minted shares) is authoritative for balances and waterfall outcomes.
+- Off-chain indexers and the future web app **display and build txs**; they do not redefine payment priority or loss absorption.
+
+## Tests
+
+- Any change to **authorization** (signatures, whitelist) or **value movement** (deposit, disburse, repay, withdraw) requires tests that cover at least one passing and one failing path before merge.

@@ -1,0 +1,46 @@
+---
+description: Aiken layout, validator patterns, and script security for Cardano contracts
+globs: "**/*.ak"
+alwaysApply: false
+---
+
+# Aiken contracts
+
+## Layout
+
+```
+validators/   # spend/mint validators — thin orchestration
+lib/          # pure types, math (waterfall, shares), shared checks
+```
+
+- One **primary purpose** per validator module (e.g. vault spend, credit spend, share mint, whitelist mint).
+- Shared logic lives in `lib/`; validators wire **inputs, outputs, datums, redeemers, and signatures**.
+
+## Validator discipline
+
+- **Exhaustive redeemers:** every variant handled; unknown paths fail.
+- **Preserve value:** when continuing a script UTxO, output value must include at least the locked assets the datum expects (no accidental drain except via defined redeemers).
+- **Validity interval:** use `validity_range` when time bounds matter (loan schedule, attestation freshness if modeled on-chain).
+- **Constants** (asset names, max fee bps caps, tranche tags): single module in `lib/` (e.g. `lib/constants.ak`), not magic literals scattered in validators.
+
+## Forbidden in MVP
+
+```aiken
+// BAD — no upgrade path in phase 1
+Upgrade { new_script_hash: Hash<Script> }
+
+// BAD — custodial “admin withdraw arbitrary value” without loan/vault rules
+AdminDrain
+```
+
+- No proxy indirection validator whose only job is swapping script hashes.
+- Curator power is limited to **configured** actions (origination, parameter updates in datum, whitelist mint/burn), each enforced by explicit checks.
+
+## Transactions
+
+- Document expected **input/output graph** in module doc comments for each redeemer (which UTxOs must appear, which signatures).
+- Prefer reading **datum from the spent output** and checking **output datum continuity** on the same script address.
+
+## Before merge
+
+- Run `aiken check` (and `aiken build` when CI exists). Fix all compiler warnings in touched files.

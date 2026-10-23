@@ -1,0 +1,49 @@
+---
+description: nudu Growth Protocol — product scope, actors, and phase-1 boundaries
+alwaysApply: true
+---
+
+# Protocol context
+
+**nudu Growth Protocol** is curated lending on Cardano: LatAm capital into revenue-based loans (RBF) to LatAm startups via **curator-managed tranched vaults** with a first-loss **junior** tranche.
+
+## Phase 1 (MVP on-chain)
+
+Build only:
+
+- **Tranched vault** — USDCx deposits to senior or junior; native share tokens per tranche
+- **Credit contract** — one UTxO per loan (terms, disbursement, repayments)
+- **Waterfall** — senior rate first (pro rata among senior LPs), remainder to junior; losses hit junior first
+- **KYC whitelist** — deposits only from whitelisted addresses
+- **Revenue oracle** — one whitelisted attester; signed revenue attestations for repayments
+
+Target network for deployment: **preprod** (when wiring deploy scripts). Do not scope mainnet-only integrations in phase-1 contracts.
+
+## Out of scope for phase 1
+
+Do not add validators, redeemers, or datums for:
+
+- Idle liquidity (Liqwid, sUSDrf / RealFi Efficiency Layer)
+- External curators or multi-vault factory beyond the single pilot vault
+- Governance token or protocol tokenomics
+- Public SDK or dashboard (off-chain only later)
+
+Reference docs: [README.md](README.md), [docs/curated-lending-for-latam-startups.pdf](docs/curated-lending-for-latam-startups.pdf).
+
+## Actors
+
+| Actor | Role |
+|-------|------|
+| Senior depositors | LatAm LPs; paid first at lower rate |
+| Curator | Selects borrowers, sets terms, funds junior (first loss); **single Ed25519 key** in MVP |
+| Borrower | Startup; repays % of revenue per loan terms |
+| Attester | Signs revenue attestations (one key in config for MVP) |
+
+Investors deposit **directly into contracts** — the protocol must not introduce an off-chain custodial wallet for user funds.
+
+## Fixed product rules
+
+- **Denomination:** USDCx only for vault, loans, fees, and waterfall splits (integer base units).
+- **No protocol token** in the next 12 months; fees are USDCx (protocol fee on interest, curator performance fee).
+- **Scripts are immutable** after deploy: no upgrade proxy, no “replace script hash” redeemer in MVP.
+- **Curator control** lives in **datum fields** and **whitelist mint policy**, not in redeploying validators.
