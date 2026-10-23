@@ -9,6 +9,8 @@
 | **Denomination** | USDCx · no protocol token (12‑month horizon) |
 | **Company** | [nudu](https://trynudu.com) · Buenos Aires |
 
+**Docs:** [spec](docs/spec.md) · [roadmap](docs/roadmap.md) · [PDF deck](docs/curated-lending-for-latam-startups.pdf)
+
 ---
 
 ## Why Cardano needs this
@@ -47,7 +49,7 @@ flowchart LR
 3. Borrowers **repay a share of revenue**; a **waterfall** pays protocol and curator fees on interest, then senior rate (pro rata), then junior; **losses hit junior first**.
 4. Off-chain, a **revenue attester** signs attestations (payment processor / accounting); each loan is backed by a legal credit agreement referencing the on-chain loan.
 
-Full narrative, money flows, and 12‑month roadmap: **[docs/curated-lending-for-latam-startups.pdf](docs/curated-lending-for-latam-startups.pdf)**.
+Details: **[docs/spec.md](docs/spec.md)** · **[docs/roadmap.md](docs/roadmap.md)** · [PDF](docs/curated-lending-for-latam-startups.pdf).
 
 ---
 
@@ -88,13 +90,13 @@ Everything below is **Aiken** on Cardano.
 aiken.toml            # Aiken project (trynudu/growth-protocol)
 lib/                  # Pure types, constants, waterfall math
 validators/           # Vault, credit, share and whitelist policies
-docs/                 # Product PDF and future specs
+docs/                 # spec.md, roadmap.md, product PDF
 .cursor/rules/        # Cursor rules for contracts, invariants, and future web app
 ```
 
 ### Build contracts
 
-Requires [Aiken](https://aiken-lang.org/installation-instructions) **v1.1.19** (or `npm install` and use the scripts below):
+Requires [Aiken](https://aiken-lang.org/installation-instructions) **v1.1.24** (or `npm install` and use the scripts below):
 
 ```bash
 aiken check -D    # typecheck + tests

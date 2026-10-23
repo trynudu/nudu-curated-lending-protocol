@@ -1,6 +1,6 @@
 name = "trynudu/growth-protocol"
 version = "0.0.0"
-compiler = "v1.1.19"
+compiler = "v1.1.24"
 plutus = "v3"
 license = "Apache-2.0"
 description = "nudu Growth Protocol — phase-1 curated lending vault and credit contracts"

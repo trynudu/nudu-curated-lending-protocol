@@ -33,13 +33,12 @@ pub fn allocate_interest(
 }
 
 test allocate_interest_applies_fees_then_senior_then_junior() {
-  let alloc =
-    allocate_interest(
-      interest_paid: 10_000,
-      protocol_fee_bps: 200,
-      curator_fee_bps: 1_000,
-      senior_rate_bps: 8_000,
-    )
+  let alloc = allocate_interest(
+    interest_paid: 10_000,
+    protocol_fee_bps: 200,
+    curator_fee_bps: 1_000,
+    senior_rate_bps: 8_000,
+  )
   expect alloc.protocol_fee == 200
   expect alloc.curator_fee == 980
   expect alloc.senior_interest == 7_056
@@ -48,13 +47,12 @@ test allocate_interest_applies_fees_then_senior_then_junior() {
 }
 
 test allocate_interest_zero_interest() {
-  let alloc =
-    allocate_interest(
-      interest_paid: 0,
-      protocol_fee_bps: 200,
-      curator_fee_bps: 1_000,
-      senior_rate_bps: 8_000,
-    )
+  let alloc = allocate_interest(
+    interest_paid: 0,
+    protocol_fee_bps: 200,
+    curator_fee_bps: 1_000,
+    senior_rate_bps: 8_000,
+  )
   alloc == WaterfallAllocation {
     protocol_fee: 0,
     curator_fee: 0,
@@ -65,12 +63,11 @@ test allocate_interest_zero_interest() {
 
 test allocate_interest_principal_not_in_function() {
   // Documented invariant: principal bypasses this function entirely.
-  let alloc =
-    allocate_interest(
-      interest_paid: 5_000,
-      protocol_fee_bps: 0,
-      curator_fee_bps: 0,
-      senior_rate_bps: 10_000,
-    )
+  let alloc = allocate_interest(
+    interest_paid: 5_000,
+    protocol_fee_bps: 0,
+    curator_fee_bps: 0,
+    senior_rate_bps: 10_000,
+  )
   alloc.junior_interest == 0 && alloc.senior_interest == 5_000
 }

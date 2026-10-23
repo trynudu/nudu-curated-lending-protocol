@@ -8,6 +8,6 @@
     "fmt:check": "aiken fmt --check"
   },
   "devDependencies": {
-    "@aiken-lang/aiken": "1.1.19"
+    "@aiken-lang/aiken": "1.1.24"
   }
 }
