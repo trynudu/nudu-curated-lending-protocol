@@ -10,8 +10,9 @@ use constants.{
 }
 use shares.{assets_for_withdraw, shares_for_deposit}
 use types.{
-  Tranche, VaultConfig, VaultDatum, VaultRedeemer, tranche_assets,
-  tranche_shares, with_tranche_assets, with_tranche_shares,
+  Deposit, Junior, Senior, Tranche, UpdateConfig, VaultConfig, VaultDatum,
+  VaultRedeemer, Withdraw, tranche_assets, tranche_shares, with_tranche_assets,
+  with_tranche_shares,
 }
 
 pub fn signed_by(

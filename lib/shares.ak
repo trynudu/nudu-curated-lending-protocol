@@ -1,5 +1,3 @@
-use types.{Tranche}
-
 /// Shares minted for a deposit (integer division; rounds down — favors the vault).
 pub fn shares_for_deposit(
   deposit: Int,
