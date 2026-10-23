@@ -85,11 +85,30 @@ Everything below is **Aiken** on Cardano.
 ## Repository layout
 
 ```
+aiken.toml            # Aiken project (trynudu/growth-protocol)
+lib/                  # Pure types, constants, waterfall math
+validators/           # Vault, credit, share and whitelist policies
 docs/                 # Product PDF and future specs
 .cursor/rules/        # Cursor rules for contracts, invariants, and future web app
 ```
 
-Smart contracts (`validators/`, `lib/`) will live at the repo root once the Aiken project is scaffolded.
+### Build contracts
+
+Requires [Aiken](https://aiken-lang.org/installation-instructions) **v1.1.19** (or `npm install` and use the scripts below):
+
+```bash
+aiken check -D    # typecheck + tests
+aiken build       # compile validators
+aiken fmt         # format .ak sources
+```
+
+With npm (local `@aiken-lang/aiken`):
+
+```bash
+npm install
+npm run check
+npm run build
+```
 
 ### Agent / contributor rules
 

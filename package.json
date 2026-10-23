@@ -1,0 +1,13 @@
+{
+  "name": "nudu-curated-lending-protocol",
+  "private": true,
+  "scripts": {
+    "check": "aiken check -D",
+    "build": "aiken build",
+    "fmt": "aiken fmt",
+    "fmt:check": "aiken fmt --check"
+  },
+  "devDependencies": {
+    "@aiken-lang/aiken": "1.1.19"
+  }
+}
