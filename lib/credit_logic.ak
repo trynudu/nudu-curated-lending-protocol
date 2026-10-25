@@ -283,7 +283,7 @@ fn continuing_vault_output(
   outputs: List<Output>,
   vault_script: ScriptHash,
   usdcx_policy: PolicyId,
-) -> Option<(Output, VaultDatum, Int)> {
+) -> Option<(VaultDatum, Int)> {
   list.foldl(
     outputs,
     None,
@@ -302,7 +302,7 @@ fn continuing_vault_output(
                       usdcx_policy,
                       usdcx_asset_name(),
                     )
-                    Some((out, datum, usdcx))
+                    Some((datum, usdcx))
                   }
                   _ -> None
                 }
@@ -342,7 +342,7 @@ fn spent_vault_io(
                       )
                     is {
                       None -> None
-                      Some((out, out_datum, out_usdcx)) -> {
+                      Some((out_datum, out_usdcx)) -> {
                         let in_usdcx = quantity_of(
                           input.output.value,
                           in_datum.usdcx_policy,
@@ -386,63 +386,60 @@ pub fn validate_credit_repay(
   loan: LoanDatum,
   redeemer: CreditSpendRedeemer,
 ) -> Bool {
-  when redeemer is {
-    Repay { principal_paid, interest_paid } -> {
-      let payment_total = principal_paid + interest_paid
-      if loan.status != Active || payment_total <= 0 {
-        False
-      } else if !signed_by(self.extra_signatories, loan.borrower) {
-        False
-      } else if interest_paid < 0 {
-        False
-      } else {
-        when spent_vault_io(self.inputs, self.outputs, loan.vault_script) is {
+  let Repay { principal_paid, interest_paid } = redeemer
+  let payment_total = principal_paid + interest_paid
+  if loan.status != Active || payment_total <= 0 {
+    False
+  } else if !signed_by(self.extra_signatories, loan.borrower) {
+    False
+  } else if interest_paid < 0 {
+    False
+  } else {
+    when spent_vault_io(self.inputs, self.outputs, loan.vault_script) is {
+      None -> False
+      Some((vault_ref, vault_in, vault_out, vault_in_usdcx, vault_out_usdcx)) ->
+        when vault_repay_redeemer(self.redeemers, vault_ref) is {
           None -> False
-          Some((vault_ref, vault_in, vault_out, vault_in_usdcx, vault_out_usdcx)) ->
-            when vault_repay_redeemer(self.redeemers, vault_ref) is {
-              None -> False
-              Some(RecordRepayment { principal_paid: vp, interest_paid: vi }) ->
-                if vp != principal_paid || vi != interest_paid {
-                  False
-                } else if !signed_by(
-                  self.extra_signatories,
-                  vault_in.config.attester,
-                ) {
-                  False
-                } else if !validate_vault_repay(
-                  vault_in,
-                  vault_out,
-                  principal_paid,
-                  interest_paid,
-                  vault_in_usdcx,
-                  vault_out_usdcx,
-                  self.outputs,
-                ) {
-                  False
-                } else {
-                  when apply_loan_repay(loan, principal_paid) is {
-                    None -> False
-                    Some(expected_loan) -> {
-                      let borrower_paid = usdcx_from_borrower_inputs(
-                        self.inputs,
-                        vault_in.usdcx_policy,
-                        loan.borrower,
-                      )
-                      and {
-                        borrower_paid >= payment_total,
-                        validate_loan_repay_output(
-                          self.outputs,
-                          credit_script,
-                          expected_loan,
-                        ),
-                      }
-                    }
+          Some(RecordRepayment { principal_paid: vp, interest_paid: vi }) ->
+            if vp != principal_paid || vi != interest_paid {
+              False
+            } else if !signed_by(
+              self.extra_signatories,
+              vault_in.config.attester,
+            ) {
+              False
+            } else if !validate_vault_repay(
+              vault_in,
+              vault_out,
+              principal_paid,
+              interest_paid,
+              vault_in_usdcx,
+              vault_out_usdcx,
+              self.outputs,
+            ) {
+              False
+            } else {
+              when apply_loan_repay(loan, principal_paid) is {
+                None -> False
+                Some(expected_loan) -> {
+                  let borrower_paid = usdcx_from_borrower_inputs(
+                    self.inputs,
+                    vault_in.usdcx_policy,
+                    loan.borrower,
+                  )
+                  and {
+                    borrower_paid >= payment_total,
+                    validate_loan_repay_output(
+                      self.outputs,
+                      credit_script,
+                      expected_loan,
+                    ),
                   }
                 }
-              _ -> False
+              }
             }
+          _ -> False
         }
-      }
     }
   }
 }
