@@ -164,27 +164,26 @@ pub fn validate_credit_open(
   curator: VerificationKeyHash,
   redeemer: CreditMintRedeemer,
 ) -> Bool {
-  when redeemer is {
-    Open {
-      borrower,
-      principal,
-      revenue_share_bps,
-      repayment_cap,
-      loan_asset_name,
-    } -> {
-      let expected = expected_open_loan(
-        credit_script,
+  expect  
+      Open {
         borrower,
         principal,
         revenue_share_bps,
         repayment_cap,
-      )
-      and {
-        signed_by(self.extra_signatories, curator),
-        validate_open_mint(self.mint, policy_id, loan_asset_name),
-        validate_loan_output(self.outputs, credit_script, expected),
+        loan_asset_name,
       }
-    }
+    = redeemer
+  let expected = expected_open_loan(
+    credit_script,
+    borrower,
+    principal,
+    revenue_share_bps,
+    repayment_cap,
+  )
+  and {
+    signed_by(self.extra_signatories, curator),
+    validate_open_mint(self.mint, policy_id, loan_asset_name),
+    validate_loan_output(self.outputs, credit_script, expected),
   }
 }
 
