@@ -3,7 +3,7 @@ use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use auth.{signed_by}
 use cardano/address.{Script, VerificationKey}
 use cardano/assets.{AssetName, Assets, PolicyId, quantity_of}
-use cardano/transaction.{InlineDatum, Input, Output, Transaction}
+use cardano/transaction.{InlineDatum, Input, Output, Transaction, placeholder}
 use constants.{bps_denominator, usdcx_asset_name}
 use types.{
   Active, CreditMintRedeemer, LoanDatum, LoanStatus, Open, PendingDisburse,
@@ -192,7 +192,7 @@ test validate_credit_open_fails_without_curator() {
   let credit_script = #"dddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
   let policy = #"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
   !validate_credit_open(
-    cardano / transaction.placeholder,
+    placeholder,
     policy,
     credit_script,
     #"aa",

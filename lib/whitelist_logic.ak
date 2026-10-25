@@ -3,7 +3,7 @@ use aiken/crypto.{VerificationKeyHash}
 use auth.{signed_by}
 use cardano/address.{VerificationKey, from_verification_key}
 use cardano/assets.{Assets, PolicyId, from_asset, quantity_of}
-use cardano/transaction.{Input, NoDatum, Output, Transaction}
+use cardano/transaction.{Input, NoDatum, Output, Transaction, placeholder}
 use constants.{whitelist_asset_name}
 
 pub fn mint_delta_for_kyc() -> Int {
@@ -98,7 +98,7 @@ test validate_mint_kyc_requires_curator_signature() {
   let curator = #"aa"
   let holder = #"cc"
   let tx = Transaction {
-    ..cardano / transaction.placeholder,
+    ..placeholder,
     extra_signatories: [curator],
     mint: from_asset(policy, whitelist_asset_name(), mint_delta_for_kyc()),
     outputs: [
@@ -115,7 +115,7 @@ test validate_mint_kyc_requires_curator_signature() {
 
 test validate_mint_kyc_fails_without_curator() {
   let policy = #"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-  !validate_mint_kyc(cardano / transaction.placeholder, policy, #"aa", #"cc")
+  !validate_mint_kyc(placeholder, policy, #"aa", #"cc")
 }
 
 test validate_policy_mint_rejects_wrong_quantity() {
@@ -132,7 +132,7 @@ test validate_burn_kyc_fails_without_input_token() {
   let curator = #"aa"
   let holder = #"cc"
   let tx = Transaction {
-    ..cardano / transaction.placeholder,
+    ..placeholder,
     extra_signatories: [curator],
     mint: from_asset(policy, whitelist_asset_name(), burn_delta_for_kyc()),
   }
