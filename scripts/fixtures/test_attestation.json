@@ -1,0 +1,10 @@
+{
+  "loan_tx_id": "1111111111111111111111111111111111111111111111111111111111111111",
+  "loan_output_index": 1,
+  "period_id": 202601,
+  "attested_revenue": 500000,
+  "principal_paid": 500,
+  "interest_paid": 10000,
+  "valid_until": 1000000000000,
+  "nonce": 42
+}

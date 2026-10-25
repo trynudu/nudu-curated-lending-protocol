@@ -4,3 +4,10 @@ build/
 
 # Optional local toolchain (CI uses setup-aiken)
 node_modules/
+
+# Attester / local secrets
+.env
+*.seed
+
+# Python
+__pycache__/

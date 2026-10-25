@@ -104,6 +104,21 @@ aiken build       # compile validators
 aiken fmt         # format .ak sources
 ```
 
+### Revenue attestation (off-chain signer)
+
+Repay requires an Ed25519 signature over the **NUDU1** payload defined in [`lib/attestation.ak`](lib/attestation.ak). The attester’s **verification key hash** must match `VaultConfig.attester` in the vault datum.
+
+```bash
+pip install -r scripts/requirements.txt
+cp .env.example .env   # set ATTESTER_SIGNING_SEED_FILE to a 32-byte raw seed (do not commit)
+python3 scripts/test_attestation.py
+python3 scripts/sign_attestation.py \
+  --input scripts/fixtures/test_attestation.json \
+  --seed-file /path/to/attester.seed
+```
+
+Stdout is JSON with `digest`, `verification_key`, `verification_key_hash`, and `signature` (hex). Pass the latter three into the credit `Repay` redeemer when building the transaction. Regenerate Aiken test constants with `python3 scripts/gen_attestation_test_vector.py`.
+
 With npm (local `@aiken-lang/aiken`):
 
 ```bash
