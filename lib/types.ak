@@ -1,5 +1,6 @@
-use aiken/crypto.{ScriptHash, VerificationKeyHash}
+use aiken/crypto.{ScriptHash, Signature, VerificationKey, VerificationKeyHash}
 use cardano/assets.{AssetName, PolicyId}
+use cardano/transaction.{OutputReference}
 use constants.{junior_share_asset_name, senior_share_asset_name}
 
 pub type Tranche {
@@ -13,7 +14,7 @@ pub type VaultConfig {
   protocol_fee_bps: Int,
   curator_fee_bps: Int,
   senior_rate_bps: Int,
-  /// MVP revenue attester (repay requires this key in extra_signatories).
+  /// MVP revenue attester — Ed25519 key hash; repay verifies signed `RevenueAttestation`.
   attester: VerificationKeyHash,
   protocol_treasury: VerificationKeyHash,
 }
@@ -61,8 +62,24 @@ pub type OpenLoanRedeemer {
   loan_asset_name: AssetName,
 }
 
+pub type RevenueAttestation {
+  loan_ref: OutputReference,
+  period_id: Int,
+  attested_revenue: Int,
+  principal_paid: Int,
+  interest_paid: Int,
+  valid_until: Int,
+  nonce: Int,
+}
+
 pub type CreditSpendRedeemer {
-  Repay { principal_paid: Int, interest_paid: Int }
+  Repay {
+    principal_paid: Int,
+    interest_paid: Int,
+    attestation: RevenueAttestation,
+    attester_vkey: VerificationKey,
+    attester_signature: Signature,
+  }
 }
 
 pub type ShareMintRedeemer {
@@ -85,6 +102,8 @@ pub type LoanDatum {
   outstanding_principal: Int,
   revenue_share_bps: Int,
   repayment_cap: Int,
+  /// Cumulative USDCx returned (principal + interest) against `repayment_cap`.
+  total_repaid: Int,
   status: LoanStatus,
 }
 

@@ -1,5 +1,6 @@
 use aiken/collection/list
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
+use attestation.{validate_revenue_attestation}
 use auth.{signed_by}
 use cardano/address.{Script, VerificationKey}
 use cardano/assets.{AssetName, Assets, PolicyId, quantity_of}
@@ -11,7 +12,8 @@ use constants.{bps_denominator, usdcx_asset_name}
 use repay_logic.{validate_vault_repay}
 use types.{
   Active, CreditSpendRedeemer, LoanDatum, LoanStatus, OpenLoanRedeemer,
-  PendingDisburse, RecordRepayment, Repaid, Repay, VaultDatum, VaultRedeemer,
+  PendingDisburse, RecordRepayment, Repaid, Repay, RevenueAttestation,
+  VaultDatum, VaultRedeemer,
 }
 
 pub fn vault_tvl(liquid_usdcx: Int, deployed_outstanding: Int) -> Int {
@@ -94,6 +96,7 @@ pub fn expected_open_loan(
     outstanding_principal: principal,
     revenue_share_bps,
     repayment_cap,
+    total_repaid: 0,
     status: Active,
   }
 }
@@ -208,15 +211,20 @@ test validate_credit_open_fails_without_curator() {
 pub fn apply_loan_repay(
   loan: LoanDatum,
   principal_paid: Int,
+  interest_paid: Int,
 ) -> Option<LoanDatum> {
-  if principal_paid <= 0 || principal_paid > loan.outstanding_principal {
+  if principal_paid < 0 || principal_paid > loan.outstanding_principal {
+    None
+  } else if principal_paid == 0 && interest_paid <= 0 {
     None
   } else {
     let remaining = loan.outstanding_principal - principal_paid
+    let payment_total = principal_paid + interest_paid
     Some(
       LoanDatum {
         ..loan,
         outstanding_principal: remaining,
+        total_repaid: loan.total_repaid + payment_total,
         status: if remaining == 0 {
           Repaid
         } else {
@@ -384,9 +392,18 @@ pub fn validate_credit_repay(
   self: Transaction,
   credit_script: ScriptHash,
   loan: LoanDatum,
+  loan_ref: OutputReference,
   redeemer: CreditSpendRedeemer,
 ) -> Bool {
-  let Repay { principal_paid, interest_paid } = redeemer
+  let  
+      Repay {
+        principal_paid,
+        interest_paid,
+        attestation,
+        attester_vkey,
+        attester_signature,
+      }
+    = redeemer
   let payment_total = principal_paid + interest_paid
   if loan.status != Active || payment_total <= 0 {
     False
@@ -398,53 +415,62 @@ pub fn validate_credit_repay(
     when spent_vault_io(self.inputs, self.outputs, loan.vault_script) is {
       None -> False
       Some((vault_ref, vault_in, vault_out, vault_in_usdcx, vault_out_usdcx)) ->
-        when vault_repay_redeemer(self.redeemers, vault_ref) is {
-          None -> False
-          Some(RecordRepayment { principal_paid: vp, interest_paid: vi }) ->
-            if vp != principal_paid || vi != interest_paid {
-              False
-            } else if !signed_by(
-              self.extra_signatories,
-              vault_in.config.attester,
-            ) {
-              False
-            } else if !validate_vault_repay(
-              vault_in,
-              vault_out,
-              principal_paid,
-              interest_paid,
-              vault_in_usdcx,
-              vault_out_usdcx,
-              self.outputs,
-            ) {
-              False
-            } else {
-              when apply_loan_repay(loan, principal_paid) is {
-                None -> False
-                Some(expected_loan) -> {
-                  let borrower_paid = usdcx_from_borrower_inputs(
-                    self.inputs,
-                    vault_in.usdcx_policy,
-                    loan.borrower,
-                  )
-                  and {
-                    borrower_paid >= payment_total,
-                    validate_loan_repay_output(
-                      self.outputs,
-                      credit_script,
-                      expected_loan,
-                    ),
+        if !validate_revenue_attestation(
+          attestation,
+          loan_ref,
+          loan,
+          vault_in.config.attester,
+          attester_vkey,
+          attester_signature,
+          self.validity_range,
+          principal_paid,
+          interest_paid,
+        ) {
+          False
+        } else {
+          when vault_repay_redeemer(self.redeemers, vault_ref) is {
+            None -> False
+            Some(RecordRepayment { principal_paid: vp, interest_paid: vi }) ->
+              if vp != principal_paid || vi != interest_paid {
+                False
+              } else if !validate_vault_repay(
+                vault_in,
+                vault_out,
+                principal_paid,
+                interest_paid,
+                vault_in_usdcx,
+                vault_out_usdcx,
+                self.outputs,
+              ) {
+                False
+              } else {
+                when apply_loan_repay(loan, principal_paid, interest_paid) is {
+                  None -> False
+                  Some(expected_loan) -> {
+                    let borrower_paid = usdcx_from_borrower_inputs(
+                      self.inputs,
+                      vault_in.usdcx_policy,
+                      loan.borrower,
+                    )
+                    and {
+                      borrower_paid >= payment_total,
+                      validate_loan_repay_output(
+                        self.outputs,
+                        credit_script,
+                        expected_loan,
+                      ),
+                    }
                   }
                 }
               }
-            }
-          _ -> False
+            _ -> False
+          }
         }
     }
   }
 }
 
-test validate_credit_repay_fails_without_attester() {
+test validate_credit_repay_fails_without_borrower_signature() {
   let vault_script = #"ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
   let credit_script = #"dddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
   let loan = expected_open_loan(
@@ -455,11 +481,33 @@ test validate_credit_repay_fails_without_attester() {
     500,
     2_000,
   )
+  let att = RevenueAttestation {
+    loan_ref: OutputReference {
+      transaction_id: #"0000000000000000000000000000000000000000000000000000000000000000",
+      output_index: 0,
+    },
+    period_id: 1,
+    attested_revenue: 10_000,
+    principal_paid: 100,
+    interest_paid: 10,
+    valid_until: 1_000_000_000_000,
+    nonce: 0,
+  }
   !validate_credit_repay(
     placeholder,
     credit_script,
     loan,
-    Repay { principal_paid: 100, interest_paid: 10 },
+    OutputReference {
+      transaction_id: #"0000000000000000000000000000000000000000000000000000000000000000",
+      output_index: 0,
+    },
+    Repay {
+      principal_paid: 100,
+      interest_paid: 10,
+      attestation: att,
+      attester_vkey: #"00",
+      attester_signature: #"00",
+    },
   )
 }
 

@@ -48,8 +48,13 @@ On **interest** only (never fees on returned principal):
 
 ### Revenue oracle (off-chain + on-chain verify)
 
-- Whitelisted **attester** signs revenue data (payment processor / accounting).
-- Repay transactions verify attestation + borrower funds.
+- Whitelisted **attester** (Ed25519 key in `VaultConfig.attester`) signs a **RevenueAttestation** payload each repayment period.
+- On-chain, credit `Repay` carries the attestation, attester verification key, and Ed25519 signature. The validator checks:
+  - Signature over `Blake2b-256(signing_bytes)` using the layout documented in `lib/attestation.ak` (domain `NUDU1` + loan ref + period + revenue + repay amounts + expiry + nonce).
+  - Loan output reference matches the spent loan UTxO.
+  - Repayment total ≤ revenue share × attested revenue, and cumulative repay ≤ loan cap.
+  - Transaction validity ends before `valid_until`.
+- Borrower must still sign the transaction and provide USDCx inputs; vault co-spends with `RecordRepayment`.
 
 ### Out of phase 1 (spec only)
 
