@@ -5,9 +5,7 @@ use cardano/address.{Script, VerificationKey}
 use cardano/assets.{AssetName, Assets, PolicyId, quantity_of}
 use cardano/transaction.{InlineDatum, Input, Output, Transaction, placeholder}
 use constants.{bps_denominator, usdcx_asset_name}
-use types.{
-  Active, CreditMintRedeemer, LoanDatum, LoanStatus, Open, PendingDisburse,
-}
+use types.{Active, LoanDatum, LoanStatus, OpenLoanRedeemer, PendingDisburse}
 
 pub fn vault_tvl(liquid_usdcx: Int, deployed_outstanding: Int) -> Int {
   liquid_usdcx + deployed_outstanding
@@ -162,27 +160,18 @@ pub fn validate_credit_open(
   policy_id: PolicyId,
   credit_script: ScriptHash,
   curator: VerificationKeyHash,
-  redeemer: CreditMintRedeemer,
+  redeemer: OpenLoanRedeemer,
 ) -> Bool {
-  expect  
-      Open {
-        borrower,
-        principal,
-        revenue_share_bps,
-        repayment_cap,
-        loan_asset_name,
-      }
-    = redeemer
   let expected = expected_open_loan(
     credit_script,
-    borrower,
-    principal,
-    revenue_share_bps,
-    repayment_cap,
+    redeemer.borrower,
+    redeemer.principal,
+    redeemer.revenue_share_bps,
+    redeemer.repayment_cap,
   )
   and {
     signed_by(self.extra_signatories, curator),
-    validate_open_mint(self.mint, policy_id, loan_asset_name),
+    validate_open_mint(self.mint, policy_id, redeemer.loan_asset_name),
     validate_loan_output(self.outputs, credit_script, expected),
   }
 }
@@ -195,7 +184,7 @@ test validate_credit_open_fails_without_curator() {
     policy,
     credit_script,
     #"aa",
-    Open {
+    OpenLoanRedeemer {
       borrower: #"bb",
       principal: 1_000,
       revenue_share_bps: 500,

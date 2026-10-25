@@ -48,14 +48,16 @@ pub type WhitelistRedeemer {
   BurnKyc { holder: VerificationKeyHash }
 }
 
-pub type CreditMintRedeemer {
-  Open {
-    borrower: VerificationKeyHash,
-    principal: Int,
-    revenue_share_bps: Int,
-    repayment_cap: Int,
-    loan_asset_name: AssetName,
-  }
+pub type OpenLoanRedeemer {
+  borrower: VerificationKeyHash,
+  principal: Int,
+  revenue_share_bps: Int,
+  repayment_cap: Int,
+  loan_asset_name: AssetName,
+}
+
+pub type CreditSpendRedeemer {
+  Repay { principal_paid: Int, interest_paid: Int }
 }
 
 pub type ShareMintRedeemer {
