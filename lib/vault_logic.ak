@@ -1,5 +1,6 @@
 use aiken/collection/list
 use aiken/crypto.{VerificationKeyHash}
+use auth.{signed_by}
 use cardano/address.{VerificationKey, from_verification_key}
 use cardano/assets.{Assets, PolicyId, from_asset, quantity_of, zero}
 use cardano/transaction.{
@@ -8,16 +9,15 @@ use cardano/transaction.{
 use constants.{
   junior_share_asset_name, senior_share_asset_name, whitelist_asset_name,
 }
-use auth.{signed_by}
 use credit_logic.{
   expected_open_loan, exposure_from_reference_inputs, usdcx_paid_to_borrower,
   validate_loan_output, vault_tvl, within_concentration_limit,
 }
 use shares.{assets_for_withdraw, shares_for_deposit}
 use types.{
-  Deposit, Disburse, Junior, Senior, Tranche, UpdateConfig, VaultConfig, VaultDatum,
-  VaultRedeemer, Withdraw, tranche_assets, tranche_shares, with_tranche_assets,
-  with_tranche_shares,
+  Deposit, Disburse, Junior, Senior, Tranche, UpdateConfig, VaultConfig,
+  VaultDatum, VaultRedeemer, Withdraw, tranche_assets, tranche_shares,
+  with_tranche_assets, with_tranche_shares,
 }
 
 /// Depositor input holds at least one KYC token from the whitelist policy.
@@ -176,21 +176,19 @@ pub fn validate_vault_spend(
       loan_asset_name,
     } -> {
       let payout = input_usdcx - output_usdcx
-      let existing =
-        exposure_from_reference_inputs(
-          reference_inputs,
-          input_datum.credit_script,
-          borrower,
-        )
+      let existing = exposure_from_reference_inputs(
+        reference_inputs,
+        input_datum.credit_script,
+        borrower,
+      )
       let tvl = vault_tvl(input_usdcx, input_datum.deployed_outstanding)
-      let expected_loan =
-        expected_open_loan(
-          input_datum.credit_script,
-          borrower,
-          principal,
-          revenue_share_bps,
-          repayment_cap,
-        )
+      let expected_loan = expected_open_loan(
+        input_datum.credit_script,
+        borrower,
+        principal,
+        revenue_share_bps,
+        repayment_cap,
+      )
       if payout != principal {
         False
       } else if !signed_by(extra, input_datum.curator) {
@@ -205,14 +203,17 @@ pub fn validate_vault_spend(
       } else {
         when apply_disburse(input_datum, principal) is {
           None -> False
-          Some(expected_datum) ->
-            and {
+          Some(expected_datum) -> and {
               output_datum == expected_datum,
               input_datum.senior_shares == output_datum.senior_shares,
               input_datum.junior_shares == output_datum.junior_shares,
               input_datum.senior_assets == output_datum.senior_assets,
               input_datum.junior_assets == output_datum.junior_assets,
-              validate_loan_output(outputs, input_datum.credit_script, expected_loan),
+              validate_loan_output(
+                outputs,
+                input_datum.credit_script,
+                expected_loan,
+              ),
               usdcx_paid_to_borrower(
                 outputs,
                 input_datum.usdcx_policy,

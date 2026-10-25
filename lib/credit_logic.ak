@@ -1,13 +1,13 @@
 use aiken/collection/list
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
+use auth.{signed_by}
 use cardano/address.{Script, VerificationKey}
 use cardano/assets.{AssetName, Assets, PolicyId, quantity_of}
-use cardano/transaction.{InlineDatum, Input, Output}
-
-use auth.{signed_by}
-use cardano/transaction.{Transaction}
+use cardano/transaction.{InlineDatum, Input, Output, Transaction}
 use constants.{bps_denominator, usdcx_asset_name}
-use types.{Active, CreditMintRedeemer, LoanDatum, LoanStatus, Open, PendingDisburse}
+use types.{
+  Active, CreditMintRedeemer, LoanDatum, LoanStatus, Open, PendingDisburse,
+}
 
 pub fn vault_tvl(liquid_usdcx: Int, deployed_outstanding: Int) -> Int {
   liquid_usdcx + deployed_outstanding
@@ -22,7 +22,7 @@ pub fn within_concentration_limit(
   if vault_tvl <= 0 || new_principal <= 0 {
     False
   } else {
-    (existing_exposure + new_principal) * bps_denominator <= vault_tvl * max_single_borrower_bps
+    ( existing_exposure + new_principal ) * bps_denominator <= vault_tvl * max_single_borrower_bps
   }
 }
 
@@ -56,7 +56,10 @@ pub fn exposure_from_reference_inputs(
   )
 }
 
-fn loan_outstanding_from_output(output: Output, borrower: VerificationKeyHash) -> Int {
+fn loan_outstanding_from_output(
+  output: Output,
+  borrower: VerificationKeyHash,
+) -> Int {
   when output.datum is {
     InlineDatum(raw) -> {
       expect loan: LoanDatum = raw
@@ -169,14 +172,13 @@ pub fn validate_credit_open(
       repayment_cap,
       loan_asset_name,
     } -> {
-      let expected =
-        expected_open_loan(
-          credit_script,
-          borrower,
-          principal,
-          revenue_share_bps,
-          repayment_cap,
-        )
+      let expected = expected_open_loan(
+        credit_script,
+        borrower,
+        principal,
+        revenue_share_bps,
+        repayment_cap,
+      )
       and {
         signed_by(self.extra_signatories, curator),
         validate_open_mint(self.mint, policy_id, loan_asset_name),
@@ -190,7 +192,7 @@ test validate_credit_open_fails_without_curator() {
   let credit_script = #"dddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
   let policy = #"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
   !validate_credit_open(
-    cardano/transaction.placeholder,
+    cardano / transaction.placeholder,
     policy,
     credit_script,
     #"aa",

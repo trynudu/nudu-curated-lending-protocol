@@ -1,8 +1,7 @@
 use aiken/crypto.{VerificationKeyHash}
 use cardano/assets.{PolicyId}
 use cardano/transaction.{Transaction}
-
-use types.{WhitelistRedeemer, BurnKyc, MintKyc}
+use types.{BurnKyc, MintKyc, WhitelistRedeemer}
 use whitelist_logic.{validate_burn_kyc, validate_mint_kyc}
 
 /// KYC whitelist token — curator-gated mint/burn (one `kyc` asset per holder).

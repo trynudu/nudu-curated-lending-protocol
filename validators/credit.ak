@@ -1,7 +1,6 @@
 use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use cardano/assets.{PolicyId}
 use cardano/transaction.{OutputReference, Transaction}
-
 use credit_logic.{validate_credit_open}
 use types.{CreditMintRedeemer, LoanDatum}
 
