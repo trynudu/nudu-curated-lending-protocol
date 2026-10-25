@@ -42,6 +42,7 @@ validator vault {
     )
     and {
       validate_vault_spend(
+        vault_hash,
         input_datum,
         output_datum,
         redeemer,

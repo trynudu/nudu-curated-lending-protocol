@@ -1,5 +1,5 @@
 use aiken/collection/list
-use aiken/crypto.{VerificationKeyHash}
+use aiken/crypto.{ScriptHash, VerificationKeyHash}
 use auth.{signed_by}
 use cardano/address.{VerificationKey, from_verification_key}
 use cardano/assets.{Assets, PolicyId, from_asset, quantity_of, zero}
@@ -13,11 +13,12 @@ use credit_logic.{
   expected_open_loan, exposure_from_reference_inputs, usdcx_paid_to_borrower,
   validate_loan_output, vault_tvl, within_concentration_limit,
 }
+use repay_logic.{validate_vault_repay}
 use shares.{assets_for_withdraw, shares_for_deposit}
 use types.{
-  Deposit, Disburse, Junior, Senior, Tranche, UpdateConfig, VaultConfig,
-  VaultDatum, VaultRedeemer, Withdraw, tranche_assets, tranche_shares,
-  with_tranche_assets, with_tranche_shares,
+  Deposit, Disburse, Junior, RecordRepayment, Senior, Tranche, UpdateConfig,
+  VaultConfig, VaultDatum, VaultRedeemer, Withdraw, tranche_assets,
+  tranche_shares, with_tranche_assets, with_tranche_shares,
 }
 
 /// Depositor input holds at least one KYC token from the whitelist policy.
@@ -115,6 +116,7 @@ pub fn apply_disburse(datum: VaultDatum, principal: Int) -> Option<VaultDatum> {
 
 /// Validates vault datum transition and USDCx delta for deposit / withdraw / config.
 pub fn validate_vault_spend(
+  vault_script: ScriptHash,
   input_datum: VaultDatum,
   output_datum: VaultDatum,
   redeemer: VaultRedeemer,
@@ -183,6 +185,7 @@ pub fn validate_vault_spend(
       )
       let tvl = vault_tvl(input_usdcx, input_datum.deployed_outstanding)
       let expected_loan = expected_open_loan(
+        vault_script,
         input_datum.credit_script,
         borrower,
         principal,
@@ -225,6 +228,16 @@ pub fn validate_vault_spend(
         }
       }
     }
+    RecordRepayment { principal_paid, interest_paid } ->
+      validate_vault_repay(
+        input_datum,
+        output_datum,
+        principal_paid,
+        interest_paid,
+        input_usdcx,
+        output_usdcx,
+        outputs,
+      )
   }
 }
 
@@ -258,6 +271,7 @@ pub fn share_deltas_for_redeemer(
       }
     UpdateConfig { .. } -> Some((0, 0))
     Disburse { .. } -> Some((0, 0))
+    RecordRepayment { .. } -> Some((0, 0))
   }
 }
 
@@ -320,6 +334,8 @@ test validate_update_config_keeps_balances() {
     protocol_fee_bps: 200,
     curator_fee_bps: 100,
     senior_rate_bps: 8_000,
+    attester: #"11",
+    protocol_treasury: #"22",
   }
   let datum = VaultDatum {
     curator: #"aa",
@@ -339,8 +355,12 @@ test validate_update_config_keeps_balances() {
     protocol_fee_bps: 200,
     curator_fee_bps: 100,
     senior_rate_bps: 8_000,
+    attester: #"11",
+    protocol_treasury: #"22",
   }
+  let vault_script = #"ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
   validate_vault_spend(
+    vault_script,
     datum,
     apply_config_update(datum, new_config),
     UpdateConfig { config: new_config },
@@ -359,6 +379,8 @@ test validate_deposit_senior_without_whitelist_fails() {
     protocol_fee_bps: 200,
     curator_fee_bps: 100,
     senior_rate_bps: 8_000,
+    attester: #"11",
+    protocol_treasury: #"22",
   }
   let datum = VaultDatum {
     curator: #"aa",
@@ -377,6 +399,7 @@ test validate_deposit_senior_without_whitelist_fails() {
     None -> False
     Some((expected, _)) ->
       !validate_vault_spend(
+        #"ffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         datum,
         expected,
         Deposit { tranche: Senior, depositor: #"bb" },
@@ -396,6 +419,8 @@ test validate_disburse_rejects_over_concentration() {
     protocol_fee_bps: 200,
     curator_fee_bps: 100,
     senior_rate_bps: 8_000,
+    attester: #"11",
+    protocol_treasury: #"22",
   }
   let datum = VaultDatum {
     curator: #"aa",
@@ -414,6 +439,7 @@ test validate_disburse_rejects_over_concentration() {
     None -> False
     Some(next) ->
       !validate_vault_spend(
+        #"ffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         datum,
         next,
         Disburse {
@@ -444,6 +470,8 @@ test validate_withdraw_over_shares_fails() {
     protocol_fee_bps: 200,
     curator_fee_bps: 100,
     senior_rate_bps: 8_000,
+    attester: #"11",
+    protocol_treasury: #"22",
   }
   let datum = VaultDatum {
     curator: #"aa",
@@ -459,6 +487,7 @@ test validate_withdraw_over_shares_fails() {
     deployed_outstanding: 0,
   }
   !validate_vault_spend(
+    #"ffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
     datum,
     datum,
     Withdraw { tranche: Senior, shares: 101 },

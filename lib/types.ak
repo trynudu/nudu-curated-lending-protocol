@@ -13,6 +13,9 @@ pub type VaultConfig {
   protocol_fee_bps: Int,
   curator_fee_bps: Int,
   senior_rate_bps: Int,
+  /// MVP revenue attester (repay requires this key in extra_signatories).
+  attester: VerificationKeyHash,
+  protocol_treasury: VerificationKeyHash,
 }
 
 pub type VaultDatum {
@@ -41,6 +44,7 @@ pub type VaultRedeemer {
     repayment_cap: Int,
     loan_asset_name: AssetName,
   }
+  RecordRepayment { principal_paid: Int, interest_paid: Int }
 }
 
 pub type WhitelistRedeemer {
@@ -49,6 +53,7 @@ pub type WhitelistRedeemer {
 }
 
 pub type OpenLoanRedeemer {
+  vault_script: ScriptHash,
   borrower: VerificationKeyHash,
   principal: Int,
   revenue_share_bps: Int,
@@ -73,6 +78,7 @@ pub type LoanStatus {
 }
 
 pub type LoanDatum {
+  vault_script: ScriptHash,
   credit_script: ScriptHash,
   borrower: VerificationKeyHash,
   principal: Int,
