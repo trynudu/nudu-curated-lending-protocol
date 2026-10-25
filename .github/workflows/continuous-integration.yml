@@ -16,4 +16,9 @@ jobs:
       - run: aiken --version
       - run: aiken fmt --check
       - run: aiken check -D
-      - run: aiken build
+      - run: aiken build -o blueprint/plutus.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plutus-blueprint
+          path: blueprint/plutus.json
+          retention-days: 30

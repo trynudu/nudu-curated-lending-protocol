@@ -1,0 +1,26 @@
+{
+  "name": "nudu-preprod-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build:web": "vite build",
+    "compile:ids": "tsx src/cli/print-deployment.ts",
+    "mint:pilot-usdcx": "tsx src/cli/mint-pilot-usdcx.ts",
+    "fund:demo-wallets": "tsx src/cli/fund-demo-wallets.ts",
+    "init:vault": "tsx src/cli/init-vault.ts",
+    "tx:deposit": "tsx src/cli/build-deposit.ts",
+    "tx:disburse": "tsx src/cli/build-disburse.ts",
+    "tx:repay": "tsx src/cli/build-repay.ts"
+  },
+  "dependencies": {
+    "@lucid-evolution/lucid": "^0.8.5",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.2"
+  }
+}

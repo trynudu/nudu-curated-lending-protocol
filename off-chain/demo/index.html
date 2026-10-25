@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>nudu preprod demo (Lace)</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 42rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      button {
+        margin: 0.25rem 0.5rem 0.25rem 0;
+        padding: 0.5rem 0.75rem;
+      }
+      pre {
+        background: #f4f4f4;
+        padding: 0.75rem;
+        overflow: auto;
+        font-size: 0.85rem;
+      }
+      .warn {
+        color: #8a4b00;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>nudu Growth — preprod demo</h1>
+    <p class="warn">
+      Use Lace on <strong>Preprod</strong>. Load <code>deployment.json</code> from
+      <code>npm run compile:ids</code> into the field below.
+    </p>
+    <p>
+      <button id="connect">Connect Lace</button>
+      <span id="wallet"></span>
+    </p>
+    <label>
+      Deployment JSON path or paste JSON:
+      <textarea id="deployment" rows="8" style="width: 100%"></textarea>
+    </label>
+    <p>
+      <button id="mint-kyc">Mint KYC (curator)</button>
+      <button id="deposit">Senior deposit</button>
+    </p>
+    <pre id="log"></pre>
+    <script type="module" src="/src/lace-ui.ts"></script>
+  </body>
+</html>

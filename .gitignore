@@ -11,3 +11,11 @@ node_modules/
 
 # Python
 __pycache__/
+
+# Preprod demo (local)
+off-chain/demo/node_modules/
+off-chain/demo/dist/
+off-chain/demo/deployment.json
+off-chain/demo/pilot-usdcx.json
+off-chain/demo/.attestation-input.json
+off-chain/demo/.env
