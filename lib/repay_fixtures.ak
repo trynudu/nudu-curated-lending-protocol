@@ -1,7 +1,7 @@
 use aiken/crypto.{ScriptHash}
 use aiken/interval
 use cardano/address.{from_script, from_verification_key}
-use cardano/assets.{PolicyId, from_asset, merge, zero}
+use cardano/assets.{PolicyId, from_asset, zero}
 use cardano/transaction.{
   InlineDatum, Input, NoDatum, Output, OutputReference, Redeemer, Spend,
   Transaction, placeholder,
@@ -14,8 +14,8 @@ use test_vectors.{
   test_revenue_attestation,
 }
 use types.{
-  Active, CreditSpendRedeemer, LoanDatum, RecordRepayment, Repay,
-  RevenueAttestation, VaultConfig, VaultDatum, VaultRedeemer,
+  Active, LoanDatum, RecordRepayment, Repay, RevenueAttestation, VaultConfig,
+  VaultDatum,
 }
 
 const vault_script: ScriptHash =

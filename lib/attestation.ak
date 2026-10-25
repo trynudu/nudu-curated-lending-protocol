@@ -57,7 +57,8 @@ pub fn attestation_not_expired(
   validity: ValidityRange,
   valid_until: Int,
 ) -> Bool {
-  validity |> interval.is_entirely_before(valid_until)
+  // Validity upper bound may equal `valid_until` (inclusive); treat expiry as exclusive at valid_until + 1 ms.
+  validity |> interval.is_entirely_before(valid_until + 1)
 }
 
 pub fn max_repayment_for_revenue(

@@ -1,6 +1,6 @@
 use aiken/crypto.{Signature, VerificationKey, VerificationKeyHash}
 use aiken/interval
-use attestation.{validate_revenue_attestation}
+use attestation.{attestation_digest, validate_revenue_attestation}
 use cardano/transaction.{OutputReference}
 use types.{Active, LoanDatum, RevenueAttestation}
 
@@ -32,6 +32,10 @@ pub fn test_revenue_attestation() -> RevenueAttestation {
 /// Regenerate with: `python3 scripts/gen_attestation_test_vector.py`
 pub fn test_attester_signature() -> Signature {
   #"08b1696b34670ea7592f1794485fd13be1e597cd1434aecbb53894c7619a23319a664e3dfb1997215df0ed8a528d7aaed367773f27641ac05bfeba1331a43d0a"
+}
+
+test attestation_digest_matches_off_chain_reference() {
+  attestation_digest(test_revenue_attestation()) == #"923c21d0b4308fbea3be72fc3dc5a53d474f8e34af11d5d1d7b0b457425149de"
 }
 
 test validate_revenue_attestation_accepts_test_vector() {
