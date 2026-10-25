@@ -3,7 +3,7 @@ use aiken/interval
 use cardano/address.{from_script, from_verification_key}
 use cardano/assets.{PolicyId, from_asset, merge, zero}
 use cardano/transaction.{
-  InlineDatum, Input, NoDatum, Output, OutputReference, ScriptPurpose, Spend,
+  InlineDatum, Input, NoDatum, Output, OutputReference, Redeemer, Spend,
   Transaction, placeholder,
 }
 use constants.{usdcx_asset_name}
@@ -94,11 +94,8 @@ pub fn sample_repay_transaction() -> Transaction {
     status: Active,
   }
   let attestation = test_revenue_attestation()
-  let vault_spend: VaultRedeemer = RecordRepayment {
-    principal_paid,
-    interest_paid,
-  }
-  let credit_spend: CreditSpendRedeemer = Repay {
+  let vault_spend: Redeemer = RecordRepayment { principal_paid, interest_paid }
+  let credit_spend: Redeemer = Repay {
     principal_paid,
     interest_paid,
     attestation,
