@@ -49,6 +49,8 @@ validator vault {
         output_usdcx,
         self.extra_signatories,
         self.inputs,
+        self.reference_inputs,
+        self.outputs,
       ),
       validate_share_mint(
         self.mint,

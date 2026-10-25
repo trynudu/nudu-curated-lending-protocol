@@ -1,8 +1,16 @@
+use aiken/crypto.{ScriptHash, VerificationKeyHash}
+use cardano/assets.{PolicyId}
 use cardano/transaction.{OutputReference, Transaction}
-use types.{LoanDatum}
 
-/// One UTxO per loan — disburse and repay (phase 1, unimplemented).
-validator credit {
+use credit_logic.{validate_credit_open}
+use types.{CreditMintRedeemer, LoanDatum}
+
+/// One UTxO per loan — mint opens; spend repays (repay not yet implemented).
+validator credit(curator: VerificationKeyHash, credit_script: ScriptHash) {
+  mint(redeemer: CreditMintRedeemer, policy_id: PolicyId, self: Transaction) {
+    validate_credit_open(self, policy_id, credit_script, curator, redeemer)
+  }
+
   spend(
     _datum: Option<LoanDatum>,
     _redeemer: Data,

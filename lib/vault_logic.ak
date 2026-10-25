@@ -8,18 +8,16 @@ use cardano/transaction.{
 use constants.{
   junior_share_asset_name, senior_share_asset_name, whitelist_asset_name,
 }
+use auth.{signed_by}
+use credit_logic.{
+  expected_open_loan, exposure_from_reference_inputs, usdcx_paid_to_borrower,
+  validate_loan_output, vault_tvl, within_concentration_limit,
+}
 use shares.{assets_for_withdraw, shares_for_deposit}
 use types.{
-  Deposit, Junior, Senior, Tranche, UpdateConfig, VaultConfig, VaultDatum,
+  Deposit, Disburse, Junior, Senior, Tranche, UpdateConfig, VaultConfig, VaultDatum,
   VaultRedeemer, Withdraw, tranche_assets, tranche_shares, with_tranche_assets,
   with_tranche_shares,
-}
-
-pub fn signed_by(
-  extra: List<VerificationKeyHash>,
-  who: VerificationKeyHash,
-) -> Bool {
-  list.has(extra, who)
 }
 
 /// Depositor input holds at least one KYC token from the whitelist policy.
@@ -102,6 +100,19 @@ pub fn apply_config_update(datum: VaultDatum, config: VaultConfig) -> VaultDatum
   VaultDatum { ..datum, config }
 }
 
+pub fn apply_disburse(datum: VaultDatum, principal: Int) -> Option<VaultDatum> {
+  if principal <= 0 {
+    None
+  } else {
+    Some(
+      VaultDatum {
+        ..datum,
+        deployed_outstanding: datum.deployed_outstanding + principal,
+      },
+    )
+  }
+}
+
 /// Validates vault datum transition and USDCx delta for deposit / withdraw / config.
 pub fn validate_vault_spend(
   input_datum: VaultDatum,
@@ -111,6 +122,8 @@ pub fn validate_vault_spend(
   output_usdcx: Int,
   extra: List<VerificationKeyHash>,
   inputs: List<Input>,
+  reference_inputs: List<Input>,
+  outputs: List<Output>,
 ) -> Bool {
   when redeemer is {
     Deposit { tranche, depositor } -> {
@@ -155,6 +168,62 @@ pub fn validate_vault_spend(
         input_datum.junior_assets == output_datum.junior_assets,
         output_datum == apply_config_update(input_datum, config),
       }
+    Disburse {
+      principal,
+      borrower,
+      revenue_share_bps,
+      repayment_cap,
+      loan_asset_name,
+    } -> {
+      let payout = input_usdcx - output_usdcx
+      let existing =
+        exposure_from_reference_inputs(
+          reference_inputs,
+          input_datum.credit_script,
+          borrower,
+        )
+      let tvl = vault_tvl(input_usdcx, input_datum.deployed_outstanding)
+      let expected_loan =
+        expected_open_loan(
+          input_datum.credit_script,
+          borrower,
+          principal,
+          revenue_share_bps,
+          repayment_cap,
+        )
+      if payout != principal {
+        False
+      } else if !signed_by(extra, input_datum.curator) {
+        False
+      } else if !within_concentration_limit(
+        existing,
+        principal,
+        tvl,
+        input_datum.config.max_single_borrower_bps,
+      ) {
+        False
+      } else {
+        when apply_disburse(input_datum, principal) is {
+          None -> False
+          Some(expected_datum) ->
+            and {
+              output_datum == expected_datum,
+              input_datum.senior_shares == output_datum.senior_shares,
+              input_datum.junior_shares == output_datum.junior_shares,
+              input_datum.senior_assets == output_datum.senior_assets,
+              input_datum.junior_assets == output_datum.junior_assets,
+              validate_loan_output(outputs, input_datum.credit_script, expected_loan),
+              usdcx_paid_to_borrower(
+                outputs,
+                input_datum.usdcx_policy,
+                borrower,
+                principal,
+              ),
+              loan_asset_name != #"",
+            }
+        }
+      }
+    }
   }
 }
 
@@ -187,6 +256,7 @@ pub fn share_deltas_for_redeemer(
           }
       }
     UpdateConfig { .. } -> Some((0, 0))
+    Disburse { .. } -> Some((0, 0))
   }
 }
 
@@ -255,11 +325,13 @@ test validate_update_config_keeps_balances() {
     usdcx_policy: #"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     whitelist_policy: #"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     share_policy: #"cccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    credit_script: #"dddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
     config,
     senior_shares: 100,
     junior_shares: 50,
     senior_assets: 1_000,
     junior_assets: 500,
+    deployed_outstanding: 0,
   }
   let new_config = VaultConfig {
     max_single_borrower_bps: 800,
@@ -274,6 +346,8 @@ test validate_update_config_keeps_balances() {
     10_000,
     10_000,
     [#"aa"],
+    [],
+    [],
     [],
   )
 }
@@ -290,11 +364,13 @@ test validate_deposit_senior_without_whitelist_fails() {
     usdcx_policy: #"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     whitelist_policy: #"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     share_policy: #"cccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    credit_script: #"dddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
     config,
     senior_shares: 0,
     junior_shares: 0,
     senior_assets: 0,
     junior_assets: 0,
+    deployed_outstanding: 0,
   }
   when apply_deposit(datum, Senior, 1_000) is {
     None -> False
@@ -305,6 +381,51 @@ test validate_deposit_senior_without_whitelist_fails() {
         Deposit { tranche: Senior, depositor: #"bb" },
         0,
         1_000,
+        [],
+        [],
+        [],
+        [],
+      )
+  }
+}
+
+test validate_disburse_rejects_over_concentration() {
+  let config = VaultConfig {
+    max_single_borrower_bps: 1_000,
+    protocol_fee_bps: 200,
+    curator_fee_bps: 100,
+    senior_rate_bps: 8_000,
+  }
+  let datum = VaultDatum {
+    curator: #"aa",
+    usdcx_policy: #"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    whitelist_policy: #"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    share_policy: #"cccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    credit_script: #"dddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    config,
+    senior_shares: 100,
+    junior_shares: 0,
+    senior_assets: 10_000,
+    junior_assets: 0,
+    deployed_outstanding: 0,
+  }
+  when apply_disburse(datum, 2_000) is {
+    None -> False
+    Some(next) ->
+      !validate_vault_spend(
+        datum,
+        next,
+        Disburse {
+          principal: 2_000,
+          borrower: #"bb",
+          revenue_share_bps: 500,
+          repayment_cap: 3_000,
+          loan_asset_name: #"6c6f616e31",
+        },
+        10_000,
+        8_000,
+        [#"aa"],
+        [],
         [],
         [],
       )
@@ -328,11 +449,13 @@ test validate_withdraw_over_shares_fails() {
     usdcx_policy: #"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     whitelist_policy: #"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     share_policy: #"cccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    credit_script: #"dddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
     config,
     senior_shares: 100,
     junior_shares: 0,
     senior_assets: 1_000,
     junior_assets: 0,
+    deployed_outstanding: 0,
   }
   !validate_vault_spend(
     datum,
@@ -340,6 +463,8 @@ test validate_withdraw_over_shares_fails() {
     Withdraw { tranche: Senior, shares: 101 },
     1_000,
     900,
+    [],
+    [],
     [],
     [],
   )

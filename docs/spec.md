@@ -95,8 +95,9 @@ Qualifying TVL is primarily **net new LatAm senior** + **curator junior**. RealF
 | --- | --- |
 | Vault deposit / withdraw / config | Implemented (preprod wiring pending) |
 | Share mint policy | Coupled to vault spend |
-| Whitelist mint policy | Stub |
-| Credit disburse / repay | Stub |
+| Whitelist mint policy | Mint/burn KYC (curator-gated) |
+| Credit open / disburse | Vault `Disburse` + credit mint `Open` |
+| Credit repay | Stub |
 | Waterfall math (`lib/waterfall.ak`) | Implemented + tested |
 
 See [roadmap.md](./roadmap.md) for milestones by month.
