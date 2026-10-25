@@ -1,4 +1,3 @@
-use aiken/builtin.{Pair}
 use aiken/crypto.{ScriptHash}
 use aiken/interval
 use cardano/address.{from_script, from_verification_key}

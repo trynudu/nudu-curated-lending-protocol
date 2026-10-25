@@ -1,6 +1,6 @@
 use aiken/crypto.{Signature, VerificationKey, VerificationKeyHash}
 use aiken/interval
-use attestation.{validate_revenue_attestation, verification_key_hash}
+use attestation.{validate_revenue_attestation}
 use cardano/transaction.{OutputReference}
 use types.{Active, LoanDatum, RevenueAttestation}
 
